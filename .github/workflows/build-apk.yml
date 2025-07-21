@@ -1,55 +1,55 @@
-name: Build APK
+name: Build APK Debug
 
 on:
-  push:
-    branches: [ master ]
-  workflow_dispatch:  # Permet de déclencher manuellement le build
+  workflow_dispatch:  # Seulement manuel pour debug
 
 jobs:
-  build:
+  debug:
     runs-on: ubuntu-latest
-    timeout-minutes: 20  # Timeout après 20 minutes
+    timeout-minutes: 10
 
     steps:
+    - name: Test basic functionality
+      run: |
+        echo "=== GitHub Actions Test ==="
+        date
+        pwd
+        ls -la
+        echo "=== Environment ==="
+        env | sort
+
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'zulu'
-        java-version: '17'
+    - name: List repository contents
+      run: |
+        echo "=== Repository Contents ==="
+        ls -la
+        echo "=== Pubspec check ==="
+        if [ -f "pubspec.yaml" ]; then
+          echo "pubspec.yaml found"
+          head -20 pubspec.yaml
+        else
+          echo "ERROR: pubspec.yaml not found!"
+        fi
 
-    - name: Setup Flutter
+    - name: Setup Java (basic)
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: '11'
+
+    - name: Verify Java
+      run: |
+        java -version
+        javac -version
+
+    - name: Setup Flutter (basic)
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: 'latest'
         channel: 'stable'
-        cache: true
 
-    - name: Verify Flutter installation
+    - name: Verify Flutter basic
       run: |
         flutter --version
-        flutter doctor -v
-
-    - name: Clean project
-      run: flutter clean
-
-    - name: Get dependencies
-      run: flutter pub get
-
-    - name: Verify project structure
-      run: |
-        ls -la
-        ls -la lib/
-        cat pubspec.yaml
-
-    - name: Build APK (simplified)
-      run: flutter build apk --release --no-tree-shake-icons --verbose
-
-    - name: Upload APK artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: tiforama-apk
-        path: build/app/outputs/flutter-apk/app-release.apk
-        retention-days: 30
+        which flutter
