@@ -1,55 +1,38 @@
-name: Build APK Debug
+name: Simple APK Build
 
 on:
-  workflow_dispatch:  # Seulement manuel pour debug
+  workflow_dispatch:
 
 jobs:
-  debug:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
-    - name: Test basic functionality
-      run: |
-        echo "=== GitHub Actions Test ==="
-        date
-        pwd
-        ls -la
-        echo "=== Environment ==="
-        env | sort
-
-    - name: Checkout repository
+    - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: List repository contents
-      run: |
-        echo "=== Repository Contents ==="
-        ls -la
-        echo "=== Pubspec check ==="
-        if [ -f "pubspec.yaml" ]; then
-          echo "pubspec.yaml found"
-          head -20 pubspec.yaml
-        else
-          echo "ERROR: pubspec.yaml not found!"
-        fi
-
-    - name: Setup Java (basic)
-      uses: actions/setup-java@v3
+    - name: Setup Java
+      uses: actions/setup-java@v4
       with:
-        distribution: 'temurin'
-        java-version: '11'
+        distribution: 'zulu'
+        java-version: '17'
 
-    - name: Verify Java
-      run: |
-        java -version
-        javac -version
-
-    - name: Setup Flutter (basic)
+    - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
+        flutter-version: '3.19.6'
         channel: 'stable'
+        cache: true
 
-    - name: Verify Flutter basic
-      run: |
-        flutter --version
-        which flutter
+    - name: Get dependencies
+      run: flutter pub get
+
+    - name: Build APK
+      run: flutter build apk --release
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release
+        path: build/app/outputs/flutter-apk/app-release.apk
