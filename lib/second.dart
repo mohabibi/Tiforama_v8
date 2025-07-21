@@ -640,7 +640,7 @@ class _SecondPageState extends State<SecondPage> {
                         }),
                       ),
                     ),
-                    SizedBox(height: underlineSpacing),
+                    const SizedBox(height: underlineSpacing),
                   ],
                 ),
 
@@ -781,7 +781,7 @@ class _SecondPageState extends State<SecondPage> {
                         }),
                       ),
                     ),
-                    SizedBox(height: underlineSpacing),
+                    const SizedBox(height: underlineSpacing),
                   ],
                 ),
 
