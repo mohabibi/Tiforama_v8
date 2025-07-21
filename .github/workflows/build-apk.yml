@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
     - name: Checkout code
@@ -25,13 +25,27 @@ jobs:
         channel: 'stable'
         cache: true
 
-    - name: Clean and get dependencies
+    - name: Clean project completely
       run: |
         flutter clean
-        flutter pub get
+        rm -rf ~/.gradle/caches/
+        rm -rf android/.gradle/
 
-    - name: Build APK (no-shrink for compatibility)
-      run: flutter build apk --release --no-shrink
+    - name: Get dependencies
+      run: flutter pub get
+
+    - name: Setup Gradle with daemon options
+      run: |
+        cd android
+        echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m" >> gradle.properties
+        echo "org.gradle.daemon=false" >> gradle.properties
+        echo "org.gradle.parallel=false" >> gradle.properties
+        ./gradlew --version
+
+    - name: Build APK with verbose output
+      run: |
+        export GRADLE_OPTS="-Xmx4g -Dorg.gradle.daemon=false"
+        flutter build apk --release --verbose
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
