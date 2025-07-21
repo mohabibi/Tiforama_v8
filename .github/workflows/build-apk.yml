@@ -1,4 +1,4 @@
-name: Build APK
+name: Docker Flutter APK Build
 
 on:
   workflow_dispatch:
@@ -7,64 +7,43 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    container:
+      image: ghcr.io/cirruslabs/flutter:stable
+      options: --user root
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'zulu'
-        java-version: '17'
+      - name: Show environment
+        run: |
+          flutter --version
+          flutter doctor -v
+          uname -a
+          echo "Working directory:"
+          pwd
+          ls -la
 
-    - name: Setup Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.19.6'
-        channel: 'stable'
-        cache: true
+      - name: Flutter setup
+        run: |
+          flutter clean
+          flutter pub get
 
-    - name: Clean project completely
-      run: |
-        flutter clean
-        rm -rf ~/.gradle/caches/ || true
-        rm -rf android/.gradle/ || true
+      - name: Prepare Android build
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ls -la
+          cat gradle.properties
 
-    - name: Get dependencies
-      run: flutter pub get
+      - name: Build APK
+        run: |
+          flutter build apk --debug
+          ls -la build/app/outputs/flutter-apk/
 
-    - name: Make Gradle wrapper executable
-      run: |
-        cd android
-        chmod +x ./gradlew
-
-    - name: Setup Gradle with daemon options
-      run: |
-        cd android
-        echo "org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=512m" >> gradle.properties
-        echo "org.gradle.daemon=false" >> gradle.properties
-        echo "org.gradle.parallel=false" >> gradle.properties
-        cat gradle.properties
-
-    - name: Debug environment
-      run: |
-        flutter --version
-        java -version
-        echo "Working directory:"
-        pwd
-        ls -la
-        echo "Android directory:"
-        ls -la android/
-
-    - name: Build APK (simple)
-      run: |
-        export GRADLE_OPTS="-Xmx4g -Dorg.gradle.daemon=false"
-        flutter build apk --debug
-
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: tiforama-apk
-        path: build/app/outputs/flutter-apk/app-release.apk
-        retention-days: 30
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiforama-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 30
