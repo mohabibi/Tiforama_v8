@@ -1,0 +1,36 @@
+name: tiforama
+description: Application de gestion des tifos
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'  # Version SDK Flutter
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.1.0          # Pour les requêtes API
+  intl: ^0.18.0         # Pour le formatage des dates
+  audioplayers: ^5.1.0  # Pour la lecture audio
+  path_provider: ^2.1.0 # Pour la gestion des fichiers
+  shared_preferences: ^2.2.0  # Pour le stockage local
+  logging: ^1.2.0       # Pour les logs
+  logger: ^2.0.1        # Pour les logs avancés
+  cupertino_icons: ^1.0.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/     # Pour les images
+    - assets/sounds/     # Pour les sons
+
+
+
+
+
+
