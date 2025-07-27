@@ -1,24 +1,63 @@
-# Tiforama
+# Tiforama Web Application
 
-Une application Flutter moderne et bien structurée.
+Application web React/TypeScript pour la gestion et l'affichage de tifos.
 
-## Pour commencer
+## Description
 
-Ce projet est une application Flutter.
+Tiforama est une application web qui permet de :
+- Configurer des tifos avec des couleurs, icônes et durées
+- Gérer les places et groupes
+- Afficher des animations synchronisées
+- Sauvegarder en mémoire locale
 
-Pour lancer l'application:
+## Technologies utilisées
 
-1. Assurez-vous que Flutter est installé sur votre machine
-2. Exécutez `flutter pub get` pour installer les dépendances
-3. Lancez l'application avec `flutter run`
+- **React 18** avec TypeScript
+- **Material-UI (MUI)** pour l'interface
+- **Redux Toolkit** pour la gestion d'état
+- **Styled Components** pour le styling
+- **Service Workers** pour le mode hors ligne
+
+## Installation
+
+```bash
+npm install
+```
+
+## Développement
+
+```bash
+npm start
+```
+
+L'application sera accessible sur http://localhost:3000
+
+## Build de production
+
+```bash
+npm run build
+```
 
 ## Structure du projet
 
-- `lib/` : Contient le code source Dart
-  - `main.dart` : Point d'entrée de l'application
-- `assets/` : Ressources statiques (images, polices, etc.)
-- `test/` : Tests unitaires et de widgets
+```
+src/
+├── components/          # Composants React
+├── hooks/              # Hooks personnalisés
+├── services/           # Services API et audio
+├── store/              # Redux store et slices
+├── types/              # Types TypeScript
+└── utils/              # Utilitaires
+```
 
-## Fonctionnalités à venir
+## Fonctionnalités principales
 
-- Liste des fonctionnalités prévues
+- **TifoFormFragTifo** : Formulaire principal de configuration
+- **AnimationDisplay** : Affichage des animations
+- **PlaceInput** : Composant de saisie de numéro de place
+- **ApiService** : Service de communication avec l'API
+- **AudioService** : Gestion des sons et musiques
+
+## Date de mise à jour
+
+Dernière mise à jour : 27 juillet 2025

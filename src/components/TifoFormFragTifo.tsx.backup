@@ -1,0 +1,810 @@
+import React, { useState, useEffect } from 'react';
+import { styled } from '@mui/material/styles';
+import { 
+  Box, 
+  Button, 
+  CircularProgress,
+  Autocomplete,
+  TextField,
+  Fab,
+  IconButton,
+  InputAdornment
+} from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import EditIcon from '@mui/icons-material/Edit';
+import { useAppDispatch } from '../store';
+import { setCurrentData } from '../store/tifoSlice';
+import { TifoState } from '../types';
+import { ApiService } from '../services/ApiService';
+import { PlaceInput } from './PlaceInput';
+
+const FormContainer = styled(Box)(({ theme }) => ({
+  minHeight: '100vh',
+  backgroundColor: '#000000',
+  color: 'white',
+  position: 'relative',
+}));
+
+const MainContent = styled(Box)(({ theme }) => ({
+  padding: theme.spacing(3),
+  maxWidth: 350,
+  margin: '0 auto',
+  paddingTop: theme.spacing(6),
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+}));
+
+const StyledAutocomplete = styled(Autocomplete)(({ theme }) => ({
+  marginBottom: theme.spacing(3),
+  width: '100%',
+  '& .MuiInputBase-root': {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 12,
+    border: 'none',
+    color: 'white',
+    fontSize: 16,
+    padding: '4px 12px',
+    height: 56,
+  },
+    fontSize: 16,
+    height: 56,
+  },
+  '& .MuiInputLabel-root': {
+    color: '#90EE90',
+    fontSize: 14,
+    fontWeight: 'normal',
+  },
+  '& .MuiInputLabel-root.Mui-focused': {
+    color: '#90EE90',
+  },
+  '& .MuiOutlinedInput-notchedOutline': {
+    border: 'none',
+  },
+  '& .MuiInputBase-input': {
+    color: 'white',
+    fontSize: 16,
+  },
+}));
+
+const PlaceTextField = styled(TextField)<{ $hasPlaces?: boolean; $totalPlaces?: number }>(({ theme, $hasPlaces, $totalPlaces }) => ({
+  marginBottom: theme.spacing(3),
+  width: '100%',
+  '& .MuiInputBase-root': {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 12,
+    border: 'none',
+    color: 'white',
+    fontSize: 16,
+    height: 56,
+    position: 'relative',
+  },
+  '& .MuiInputLabel-root': {
+    color: '#90EE90',
+    fontSize: 14,
+    fontWeight: 'normal',
+  },
+  '& .MuiInputLabel-root.Mui-focused': {
+    color: '#90EE90',
+  },
+  '& .MuiOutlinedInput-notchedOutline': {
+    border: 'none',
+  },
+  '& .MuiInputBase-input': {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  // Style spécial pour le format "XXX/YYY"
+  ...$hasPlaces && {
+    '& .MuiInputBase-input': {
+      color: 'white',
+      fontSize: 16,
+      fontWeight: 'bold',
+      '&::before': {
+        color: '#FF0000', // Rouge pour la partie saisie
+      }
+    }
+  }
+}));
+
+const ValidateButton = styled(Button)<{ $canValidate?: boolean }>(({ $canValidate }) => ({
+  backgroundColor: $canValidate ? '#FFFFFF' : '#555555',
+  color: $canValidate ? '#000000' : 'white',
+  fontWeight: 'bold',
+  borderRadius: 25,
+  padding: '14px 50px',
+  marginTop: '24px',
+  marginBottom: '40px',
+  textTransform: 'none',
+  fontSize: 16,
+  minWidth: 140,
+  height: 48,
+  transition: 'all 0.3s ease',
+  opacity: $canValidate ? 1 : 0.6,
+  '&:hover': {
+    backgroundColor: $canValidate ? '#F0F0F0' : '#666666',
+  },
+  '&:disabled': {
+    backgroundColor: '#333333',
+    color: '#666666',
+  },
+}));
+
+const MemoryCirclesContainer = styled(Box)({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(5, 1fr)',
+  gridTemplateRows: 'repeat(2, 1fr)',
+  gap: '20px',
+  justifyItems: 'center',
+  marginTop: '40px',
+  marginBottom: '120px',
+  padding: '0',
+  width: '100%',
+  maxWidth: 320,
+  margin: '40px auto 120px auto', // Centrage horizontal automatique
+  transform: 'translateX(-25px)', // Décalage de 25px vers la gauche
+});
+
+const MemoryCircle = styled(Box)<{ $isActive: boolean }>(({ $isActive }) => ({
+  width: '54px',
+  height: '54px',
+  borderRadius: '50%',
+  backgroundColor: $isActive ? '#444444' : 'rgba(42, 42, 42, 0.6)',
+  border: '1px solid rgba(85, 85, 85, 0.8)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '20px',
+  fontWeight: 'bold',
+  color: $isActive ? 'white' : 'rgba(255, 255, 255, 0.4)',
+  cursor: $isActive ? 'pointer' : 'default',
+  transition: 'all 0.3s ease',
+  opacity: $isActive ? 1 : 0.6,
+  '&:hover': $isActive ? {
+    backgroundColor: '#555555',
+    transform: 'scale(1.1)',
+    borderColor: 'rgba(85, 85, 85, 1)',
+    opacity: 1,
+  } : {},
+}));
+
+const RefreshButton = styled(Fab)({
+  position: 'fixed',
+  bottom: '24px',
+  left: '24px', // Changé de right à left comme demandé
+  backgroundColor: '#ff1744',
+  color: 'white',
+  width: '56px',
+  height: '56px',
+  '&:hover': {
+    backgroundColor: '#d50000',
+    transform: 'scale(1.1)',
+  },
+  transition: 'all 0.3s ease',
+});
+
+const PlaceDisplayContainer = styled(Box)({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginBottom: '16px',
+  fontSize: '18px',
+  fontWeight: 'bold',
+  minHeight: '24px',
+});
+
+const PlaceDisplayText = styled('span')<{ $isUserInput?: boolean }>(({ $isUserInput }) => ({
+  color: $isUserInput ? '#FF0000' : 'rgba(255, 255, 255, 0.4)',
+  fontSize: '18px',
+  fontWeight: 'bold',
+}));
+
+// Interfaces correspondant exactement à votre API FragTifo
+interface Group {
+  id: number;
+  name: string;
+}
+
+interface Tifo {
+  id: number;
+  name: string;
+  group_id: number;
+}
+
+interface TifoData {
+  groupe: string;
+  tifo: string;
+  place: string;
+  colors: number[];
+  icons: string[];
+  durations: number[];
+  palette: string[];
+  mp3: string | null;
+  nombre_places: number;
+}
+
+interface SavedData {
+  group_name: string;
+  tifo_name: string;
+  place_number: number;
+  data: TifoData;
+  timestamp: number;
+}
+
+export const TifoFormFragTifo: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const apiService = ApiService.getInstance();
+
+  // États principaux du formulaire (comme dans Flutter)
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+  const [selectedTifo, setSelectedTifo] = useState<Tifo | null>(null);
+  const [placeNumber, setPlaceNumber] = useState<string>('');
+  const [placeHint, setPlaceHint] = useState<string>('0');
+  const [totalPlaces, setTotalPlaces] = useState<number>(0);
+  const [customGroupName, setCustomGroupName] = useState<string>('');
+  const [isAddingCustomGroup, setIsAddingCustomGroup] = useState<boolean>(false);
+  const [isUsingTestData, setIsUsingTestData] = useState<boolean>(false);
+
+  // États des données
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [tifos, setTifos] = useState<Tifo[]>([]);
+  const [savedData, setSavedData] = useState<SavedData[]>([]);
+  
+  // États de chargement
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+  const [isLoadingTifos, setIsLoadingTifos] = useState(false);
+
+  // Debug de totalPlaces
+  useEffect(() => {
+    console.log(`🔢 TotalPlaces mis à jour:`, totalPlaces);
+  }, [totalPlaces]);
+
+  // Charger les données initiales (comme dans Flutter)
+  useEffect(() => {
+    const initializeApp = async () => {
+      await fetchGroups();
+      await loadSavedData();
+    };
+    initializeApp();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Récupérer les groupes depuis l'API FragTifo
+  const fetchGroups = async () => {
+    setIsLoadingGroups(true);
+    try {
+      console.log('📡 Récupération des groupes depuis FragTifo API...');
+      const groupsData = await apiService.getGroups();
+      setGroups(groupsData);
+      console.log(`✅ ${groupsData.length} groupes récupérés`);
+    } catch (error) {
+      console.error('❌ Erreur lors de la récupération des groupes:', error);
+      // Continuer avec des données de démonstration si l'API n'est pas disponible
+    } finally {
+      setIsLoadingGroups(false);
+    }
+  };
+
+  // Récupérer les tifos d'un groupe
+  const fetchTifos = async (groupId: number) => {
+    setIsLoadingTifos(true);
+    setTifos([]);
+    setSelectedTifo(null);
+    setPlaceNumber('');
+    setPlaceHint('0');
+    
+    try {
+      console.log(`📡 Récupération des tifos pour le groupe ${groupId}...`);
+      const tifosData = await apiService.getTifosByGroup(groupId);
+      setTifos(tifosData);
+      console.log(`✅ ${tifosData.length} tifos récupérés`);
+    } catch (error) {
+      console.error('❌ Erreur lors de la récupération des tifos:', error);
+      // Continuer avec des données de démonstration si l'API n'est pas disponible
+    } finally {
+      setIsLoadingTifos(false);
+    }
+  };
+
+  // Récupérer la dernière place utilisée pour un tifo
+  const fetchLastPlace = async (tifoId: number) => {
+    try {
+      console.log(`📡 Récupération de la dernière place pour le tifo ${tifoId}...`);
+      const lastPlace = await apiService.getLastPlace(tifoId);
+      setPlaceHint(lastPlace.toString());
+      console.log(`✅ Dernière place récupérée: ${lastPlace}`);
+    } catch (error) {
+      console.error('❌ Erreur lors de la récupération de la dernière place:', error);
+      setPlaceHint('0');
+    }
+  };
+
+  // Récupérer les informations d'un tifo (nombre de places)
+  const fetchTifoInfo = async (groupName: string, tifoName: string) => {
+    try {
+      console.log(`📡 Récupération des informations du tifo ${tifoName}...`);
+      console.log(`🔍 Paramètres: groupe="${groupName}", tifo="${tifoName}"`);
+      
+      const tifoInfo = await apiService.getTifoInfo(groupName, tifoName);
+      console.log(`📊 Réponse getTifoInfo:`, tifoInfo);
+      
+      if (tifoInfo && tifoInfo.nombre_places > 0) {
+        console.log(`✅ Nombre de places récupéré: ${tifoInfo.nombre_places}`);
+        setTotalPlaces(tifoInfo.nombre_places);
+        setIsUsingTestData(false);
+      } else {
+        console.warn('⚠️ API non accessible ou nombre de places = 0, utilisation de données de test');
+        // Données de test pour permettre de tester l'interface même sans API
+        const testPlaces = getTestPlacesForTifo(tifoName);
+        setTotalPlaces(testPlaces);
+        setIsUsingTestData(true);
+        console.log(`🧪 Utilisation de ${testPlaces} places pour les tests`);
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de la récupération des informations du tifo:', error);
+      // Fallback avec données de test
+      const testPlaces = getTestPlacesForTifo(tifoName);
+      setTotalPlaces(testPlaces);
+      setIsUsingTestData(true);
+      console.log(`🧪 Fallback: utilisation de ${testPlaces} places pour les tests`);
+    }
+  };
+
+  // Fonction pour obtenir des données de test basées sur le nom du tifo
+  const getTestPlacesForTifo = (tifoName: string): number => {
+    const testData: { [key: string]: number } = {
+      'Tifo Victoire': 150,
+      'Chorégraphie Flammes': 200,
+      'Mosaïque Géante': 300,
+      'Animation Lumière': 180,
+      'Banderoles Unies': 100,
+      // Valeurs par défaut selon la longueur du nom
+    };
+    
+    return testData[tifoName] || Math.floor(Math.random() * 200) + 50; // 50-250 places aléatoires
+  };
+
+  // Charger les données sauvegardées depuis localStorage
+  const loadSavedData = async () => {
+    try {
+      const savedDataString = localStorage.getItem('tiforama_saved_data');
+      if (savedDataString) {
+        const parsed = JSON.parse(savedDataString);
+        setSavedData(parsed);
+        console.log(`📱 ${parsed.length} données sauvegardées chargées`);
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors du chargement des données sauvegardées:', error);
+    }
+  };
+
+  // Sauvegarder les données dans localStorage
+  const saveDataToMemory = (data: TifoData) => {
+    try {
+      const newSavedData: SavedData = {
+        group_name: selectedGroup?.name || '',
+        tifo_name: selectedTifo?.name || '',
+        place_number: parseInt(placeNumber),
+        data: data,
+        timestamp: Date.now()
+      };
+
+      const updatedSavedData = [newSavedData, ...savedData.slice(0, 9)]; // Garder seulement 10 éléments
+      setSavedData(updatedSavedData);
+      localStorage.setItem('tiforama_saved_data', JSON.stringify(updatedSavedData));
+      console.log('💾 Données sauvegardées en mémoire');
+    } catch (error) {
+      console.error('❌ Erreur lors de la sauvegarde:', error);
+    }
+  };
+
+  // Gestion des changements de champs (comme dans Flutter)
+  useEffect(() => {
+    const handleFieldChange = () => {
+      if (selectedGroup || selectedTifo || placeNumber) {
+        // Logique pour gérer les changements de champs
+      }
+    };
+    handleFieldChange();
+  }, [selectedGroup, selectedTifo, placeNumber]);
+
+  // Gestion de la sélection du groupe
+  const handleGroupChange = (event: any, newValue: Group | null) => {
+    setSelectedGroup(newValue);
+    setIsAddingCustomGroup(false);
+    setCustomGroupName('');
+    if (newValue) {
+      fetchTifos(newValue.id);
+    } else {
+      setTifos([]);
+      setSelectedTifo(null);
+      setPlaceNumber('');
+      setPlaceHint('0');
+      setTotalPlaces(0);
+    }
+  };
+
+  // Gestion de l'ajout d'un groupe personnalisé
+  const handleAddCustomGroup = () => {
+    setIsAddingCustomGroup(true);
+    setSelectedGroup(null);
+    setTifos([]);
+    setSelectedTifo(null);
+    setPlaceNumber('');
+    setPlaceHint('0');
+    setTotalPlaces(0);
+  };
+
+  const handleCustomGroupNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setCustomGroupName(event.target.value);
+  };
+
+  const handleCustomGroupSubmit = () => {
+    if (customGroupName.trim()) {
+      // Créer un groupe temporaire avec le nom personnalisé
+      const customGroup: Group = {
+        id: -1, // ID temporaire
+        name: customGroupName.trim()
+      };
+      setSelectedGroup(customGroup);
+      setIsAddingCustomGroup(false);
+      setCustomGroupName('');
+      // Les tifos resteront vides pour un groupe personnalisé
+      setTifos([]);
+    }
+  };
+
+  // Gestion de la sélection du tifo
+  const handleTifoChange = (event: any, newValue: Tifo | null) => {
+    console.log(`🎯 Sélection tifo:`, newValue);
+    console.log(`🎯 Groupe actuel:`, selectedGroup);
+    
+    setSelectedTifo(newValue);
+    setPlaceNumber('');
+    setTotalPlaces(0);
+    
+    if (newValue && selectedGroup) {
+      console.log(`🔄 Récupération des données pour tifo "${newValue.name}" du groupe "${selectedGroup.name}"`);
+      
+      // Récupérer la dernière place utilisée
+      fetchLastPlace(newValue.id);
+      
+      // Récupérer les informations du tifo (nombre de places)
+      fetchTifoInfo(selectedGroup.name, newValue.name);
+    } else {
+      console.log(`⚠️ Pas de récupération - tifo ou groupe manquant`);
+      setPlaceHint('0');
+    }
+  };
+
+  // Gestion de la saisie du numéro de place
+  const handlePlaceNumberChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    let value = event.target.value;
+    
+    // Si totalPlaces > 0, on gère le format "XXX/YYY"
+    if (totalPlaces > 0) {
+      // Extraire seulement la partie numérique avant le "/"
+      const match = value.match(/^(\d*)/);
+      value = match ? match[1] : '';
+    }
+    
+    const numericValue = parseInt(value);
+    
+    // Vérifier que le numéro de place est strictement inférieur au total (0 à totalPlaces-1)
+    if (totalPlaces > 0 && numericValue >= totalPlaces) {
+      console.warn(`⚠️ Le numéro de place (${numericValue}) doit être strictement inférieur au nombre total de places (${totalPlaces}). Places disponibles: 0 à ${totalPlaces - 1}`);
+      // Optionnel: empêcher la saisie ou limiter à totalPlaces - 1
+      return;
+    }
+    
+    // Vérifier que le numéro de place n'est pas négatif
+    if (numericValue < 0) {
+      console.warn(`⚠️ Le numéro de place ne peut pas être négatif`);
+      return;
+    }
+    
+    setPlaceNumber(value);
+  };
+
+  // Calculer si on peut valider (dès le premier chiffre saisi et place valide)
+  const canValidate = Boolean(
+    selectedGroup && 
+    selectedTifo && 
+    placeNumber && 
+    placeNumber.length > 0 &&
+    parseInt(placeNumber) >= 0 &&
+    (totalPlaces === 0 || parseInt(placeNumber) < totalPlaces) // Vérification stricte: 0 à totalPlaces-1
+  );
+
+  // Validation et récupération des données (comme dans Flutter)
+  const handleValidation = async () => {
+    if (!selectedGroup || !selectedTifo || placeNumber === '') {
+      console.warn('⚠️ Veuillez remplir tous les champs');
+      return;
+    }
+
+    const placeNum = parseInt(placeNumber);
+    
+    // Vérification que la place est valide (0 à totalPlaces-1)
+    if (totalPlaces > 0 && (placeNum < 0 || placeNum >= totalPlaces)) {
+      console.error(`❌ Numéro de place invalide: ${placeNum} doit être entre 0 et ${totalPlaces - 1}`);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // 1. Valider les données
+      console.log('🔍 Validation des données...');
+      const validation = await apiService.validateData(
+        selectedGroup.name,
+        selectedTifo.name,
+        placeNum
+      );
+
+      if (!validation.success) {
+        console.error('❌ Données invalides:', validation.error);
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Récupérer les données complètes du tifo
+      console.log('📡 Récupération des données du tifo...');
+      const tifoData = await apiService.getTifoDataByParams(
+        selectedGroup.name,
+        selectedTifo.name,
+        placeNum
+      );
+
+      // 3. Sauvegarder en mémoire
+      saveDataToMemory(tifoData);
+
+      // 4. Convertir pour Redux (format TifoState)
+      const tifoState: TifoState = {
+        colors: tifoData.colors,
+        durations: tifoData.durations,
+        palette: tifoData.palette,
+        icons: tifoData.icons,
+        mp3_local: tifoData.mp3 || ''
+      };
+
+      // 5. Mettre à jour Redux
+      dispatch(setCurrentData(tifoState));
+
+      console.log('✅ Données chargées et prêtes pour l\'animation');
+
+    } catch (error) {
+      console.error('❌ Erreur lors de la validation/récupération:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Charger une donnée sauvegardée
+  const loadSavedDataItem = async (index: number) => {
+    const item = savedData[index];
+    if (!item) return;
+
+    setIsLoading(true);
+    try {
+      // Reconvertir pour Redux
+      const tifoState: TifoState = {
+        colors: item.data.colors,
+        durations: item.data.durations,
+        palette: item.data.palette,
+        icons: item.data.icons,
+        mp3_local: item.data.mp3 || ''
+      };
+
+      dispatch(setCurrentData(tifoState));
+
+      console.log(`✅ Données chargées depuis la mémoire (slot ${index + 1})`);
+    } catch (error) {
+      console.error('❌ Erreur lors du chargement depuis la mémoire:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Rafraîchir les données et resynchroniser l'horloge UTC
+  const handleRefresh = async () => {
+    console.log('🔄 Rafraîchissement complet de l\'application...');
+    console.log('📱 Réinitialisation de la page détectée - mise à jour obligatoire de l\'offset');
+    
+    // 1. Réinitialiser le formulaire
+    fetchGroups();
+    setSelectedGroup(null);
+    setSelectedTifo(null);
+    setPlaceNumber('');
+    setPlaceHint('0');
+    setTotalPlaces(0);
+    setIsAddingCustomGroup(false);
+    setCustomGroupName('');
+    
+    console.log('✅ Application rafraîchie');
+  };
+
+  return (
+    <FormContainer>
+      <MainContent>
+        {/* Champ Groupe avec bouton d'ajout personnalisé */}
+        {!isAddingCustomGroup ? (
+          <StyledAutocomplete
+            options={groups}
+            getOptionLabel={(option) => option.name}
+            value={selectedGroup}
+            onChange={handleGroupChange}
+            loading={isLoadingGroups}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Sélectionnez votre groupe"
+                variant="outlined"
+                fullWidth
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {isLoadingGroups ? <CircularProgress color="inherit" size={20} /> : null}
+                      {params.InputProps.endAdornment}
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={handleAddCustomGroup}
+                          size="small"
+                          sx={{ color: 'white', marginLeft: 1 }}
+                          title="Ajouter un groupe personnalisé"
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </InputAdornment>
+                    </>
+                  ),
+                }}
+              />
+            )}
+          />
+        ) : (
+          <StyledTextField
+            label="Nom du groupe personnalisé"
+            variant="outlined"
+            fullWidth
+            value={customGroupName}
+            onChange={handleCustomGroupNameChange}
+            onKeyPress={(e) => e.key === 'Enter' && handleCustomGroupSubmit()}
+            onBlur={handleCustomGroupSubmit}
+            autoFocus
+          />
+        )}
+
+        {/* Champ Tifo */}
+        <StyledAutocomplete
+          options={tifos}
+          getOptionLabel={(option) => option.name}
+          value={selectedTifo}
+          onChange={handleTifoChange}
+          loading={isLoadingTifos}
+          disabled={!selectedGroup}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Sélectionnez votre tifo"
+              variant="outlined"
+              fullWidth
+              InputProps={{
+                ...params.InputProps,
+                endAdornment: (
+                  <>
+                    {isLoadingTifos ? <CircularProgress color="inherit" size={20} /> : null}
+                    {params.InputProps.endAdornment}
+                  </>
+                ),
+              }}
+            />
+          )}
+        />
+
+        {/* Affichage du nombre de places total */}
+        {totalPlaces > 0 && !isUsingTestData && (
+          <PlaceDisplayContainer>
+            <PlaceDisplayText>
+              Nombre de places : {totalPlaces}
+            </PlaceDisplayText>
+          </PlaceDisplayContainer>
+        )}
+
+        {/* Champ Place avec affichage dynamique intégré */}
+        <PlaceInput
+          value={placeNumber}
+          onChange={(value) => {
+            const numericValue = parseInt(value);
+            
+            // Vérifier que le numéro de place est strictement inférieur au total (0 à totalPlaces-1)
+            if (totalPlaces > 0 && numericValue >= totalPlaces) {
+              console.warn(`⚠️ Le numéro de place (${numericValue}) doit être strictement inférieur au nombre total de places (${totalPlaces}). Places disponibles: 0 à ${totalPlaces - 1}`);
+              return;
+            }
+            
+            // Vérifier que le numéro de place n'est pas négatif
+            if (numericValue < 0) {
+              console.warn(`⚠️ Le numéro de place ne peut pas être négatif`);
+              return;
+            }
+            
+            setPlaceNumber(value);
+          }}
+          totalPlaces={totalPlaces}
+          disabled={!selectedTifo}
+          error={Boolean(totalPlaces > 0 && placeNumber && parseInt(placeNumber) >= totalPlaces)}
+          placeholder={placeHint}
+        />
+
+        {/* Messages d'erreur pour les places */}
+        {totalPlaces > 0 && placeNumber && parseInt(placeNumber) >= totalPlaces && (
+          <Box sx={{ color: '#f44336', fontSize: '12px', marginTop: '-16px', marginBottom: '16px' }}>
+            Le numéro doit être entre 0 et {totalPlaces - 1}
+          </Box>
+        )}
+        {totalPlaces > 0 && !placeNumber && (
+          <Box sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '12px', marginTop: '-16px', marginBottom: '16px' }}>
+            Saisissez un numéro entre 0 et {totalPlaces - 1}
+          </Box>
+        )}
+
+        {/* Affichage du format "125/2500" - maintenant intégré dans le champ */}
+        {/* Supprimé car maintenant affiché directement dans PlaceTextField */}
+
+        {/* Bouton Valider */}
+        <ValidateButton
+          onClick={handleValidation}
+          disabled={!canValidate || isLoading}
+          $canValidate={canValidate}
+        >
+          {isLoading ? (
+            <CircularProgress size={24} color="inherit" />
+          ) : (
+            'Valider'
+          )}
+        </ValidateButton>
+
+        {/* Cercles de mémoire (10 cercles semi-transparents) */}
+        <MemoryCirclesContainer>
+          {Array.from({ length: 10 }, (_, index) => {
+            const isActive = index < savedData.length;
+            return (
+              <MemoryCircle
+                key={index}
+                $isActive={isActive}
+                onClick={() => isActive && loadSavedDataItem(index)}
+              >
+                {index}
+              </MemoryCircle>
+            );
+          })}
+        </MemoryCirclesContainer>
+      </MainContent>
+
+      {/* Bouton Refresh rouge en bas à gauche */}
+      <RefreshButton onClick={handleRefresh} title="Réinitialiser la page et l'horloge UTC">
+        <RefreshIcon />
+      </RefreshButton>
+
+      {/* Overlay de chargement */}
+      {isLoading && (
+        <Box
+          position="fixed"
+          top={0}
+          left={0}
+          right={0}
+          bottom={0}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          bgcolor="rgba(0, 0, 0, 0.8)"
+          zIndex={9999}
+        >
+          <CircularProgress size={60} color="primary" />
+        </Box>
+      )}
+    </FormContainer>
+  );
+};

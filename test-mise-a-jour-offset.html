@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Mise à Jour Offset au Démarrage</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-case {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f9f9f9;
+        }
+        .startup {
+            border-left: 4px solid #4CAF50;
+        }
+        .refresh {
+            border-left: 4px solid #2196F3;
+        }
+        .periodic {
+            border-left: 4px solid #FF9800;
+        }
+        .button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .button:hover {
+            background: #45a049;
+        }
+        .button.refresh {
+            background: #2196F3;
+        }
+        .button.refresh:hover {
+            background: #1976D2;
+        }
+        .button.periodic {
+            background: #FF9800;
+        }
+        .button.periodic:hover {
+            background: #F57C00;
+        }
+        .log {
+            background: #1e1e1e;
+            color: #fff;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-top: 10px;
+        }
+        .result {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .result.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .status {
+            display: flex;
+            gap: 20px;
+            margin: 15px 0;
+        }
+        .status-item {
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            min-width: 150px;
+            text-align: center;
+        }
+        .status-item.online {
+            background: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .status-item.offline {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Test Mise à Jour Offset - Démarrage, Refresh et Périodique</h1>
+        <p>Ce test vérifie que l'offset est correctement mis à jour et sauvé en mémoire lors de :</p>
+        <ul>
+            <li><strong>Démarrage du téléphone/application</strong></li>
+            <li><strong>Réinitialisation de la page (refresh)</strong></li>
+            <li><strong>Synchronisations périodiques</strong></li>
+        </ul>
+    </div>
+
+    <div class="container">
+        <h2>📊 État Actuel</h2>
+        <div class="status">
+            <div class="status-item" id="connection-status">
+                <strong>Connexion</strong><br>
+                <span id="connection-text">Non testé</span>
+            </div>
+            <div class="status-item" id="offset-status">
+                <strong>Offset Sauvé</strong><br>
+                <span id="offset-text">Non vérifié</span>
+            </div>
+            <div class="status-item" id="sync-status">
+                <strong>Dernière Sync</strong><br>
+                <span id="sync-text">Jamais</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🧪 Tests de Simulation</h2>
+        
+        <div class="test-case startup">
+            <h3>1. Simulation Démarrage Application</h3>
+            <p>Simule le démarrage de l'application avec initialisation complète du TimeService</p>
+            <button class="button" onclick="simulateAppStartup()">🚀 Simuler Démarrage App</button>
+        </div>
+
+        <div class="test-case refresh">
+            <h3>2. Simulation Refresh/Réinitialisation</h3>
+            <p>Simule une réinitialisation de page avec arrêt et redémarrage des services</p>
+            <button class="button refresh" onclick="simulatePageRefresh()">🔄 Simuler Refresh Page</button>
+        </div>
+
+        <div class="test-case periodic">
+            <h3>3. Simulation Sync Périodique</h3>
+            <p>Simule une synchronisation périodique automatique (toutes les 15 minutes)</p>
+            <button class="button periodic" onclick="simulatePeriodicSync()">⏰ Simuler Sync Périodique</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📋 Vérification LocalStorage</h2>
+        <button class="button" onclick="checkLocalStorage()">🔍 Vérifier Offset Sauvé</button>
+        <button class="button" onclick="clearLocalStorage()">🗑️ Effacer LocalStorage</button>
+        <button class="button" onclick="setTestOffset()">🧪 Définir Offset Test</button>
+        
+        <table id="storage-table" style="margin-top: 15px; display: none;">
+            <thead>
+                <tr>
+                    <th>Clé</th>
+                    <th>Valeur</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody id="storage-tbody">
+            </tbody>
+        </table>
+    </div>
+
+    <div class="container">
+        <h2>📈 Historique des Mises à Jour</h2>
+        <div id="results"></div>
+        <button class="button" onclick="clearResults()" style="background: #f44336;">Effacer Historique</button>
+    </div>
+
+    <div class="container">
+        <h2>📝 Log Détaillé</h2>
+        <div id="log" class="log">Prêt pour les tests de mise à jour d'offset...\n</div>
+    </div>
+
+    <script>
+        let simulatedOffset = null;
+        let simulatedConnectionStatus = true;
+        let updateCounter = 0;
+
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toISOString().substr(11, 12);
+            logElement.textContent += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function addResult(type, title, message) {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}`;
+            resultDiv.innerHTML = `<strong>${title}:</strong> ${message}`;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        function updateStatus() {
+            // Mise à jour du statut de connexion
+            const connectionEl = document.getElementById('connection-status');
+            const connectionText = document.getElementById('connection-text');
+            if (simulatedConnectionStatus) {
+                connectionEl.className = 'status-item online';
+                connectionText.textContent = 'En ligne';
+            } else {
+                connectionEl.className = 'status-item offline';
+                connectionText.textContent = 'Hors ligne';
+            }
+
+            // Mise à jour de l'offset
+            const offsetText = document.getElementById('offset-text');
+            const savedOffset = localStorage.getItem('time_manager_offset');
+            offsetText.textContent = savedOffset ? `${savedOffset}ms` : 'Aucun';
+
+            // Mise à jour de la dernière sync
+            const syncText = document.getElementById('sync-text');
+            const lastSync = localStorage.getItem('time_manager_last_sync');
+            if (lastSync) {
+                const syncTime = new Date(parseInt(lastSync));
+                syncText.textContent = syncTime.toLocaleTimeString();
+            } else {
+                syncText.textContent = 'Jamais';
+            }
+        }
+
+        function simulateServerSync() {
+            if (!simulatedConnectionStatus) {
+                log('❌ Simulation: Connexion serveur échouée (mode hors ligne)');
+                return null;
+            }
+
+            // Simuler différents offsets pour les tests
+            const possibleOffsets = [-126, 320, 50, -75, 100, -200];
+            const randomOffset = possibleOffsets[Math.floor(Math.random() * possibleOffsets.length)];
+            
+            log(`📡 Simulation: Connexion serveur réussie`);
+            log(`📊 Simulation: Offset mesuré depuis serveur: ${randomOffset}ms`);
+            
+            return randomOffset;
+        }
+
+        function simulateAppStartup() {
+            updateCounter++;
+            log(`\n🚀 === SIMULATION DÉMARRAGE APPLICATION #${updateCounter} ===`);
+            log('📱 Démarrage détecté - mise à jour obligatoire de l\'offset');
+            
+            // 1. Chargement offset sauvé
+            const savedOffset = localStorage.getItem('time_manager_offset');
+            if (savedOffset) {
+                log(`📱 Offset chargé depuis la mémoire: ${savedOffset}ms (pour fallback)`);
+            } else {
+                log('📱 Aucun offset sauvegardé trouvé - première utilisation');
+            }
+
+            // 2. Tentative de synchronisation obligatoire
+            log('🔄 Mise à jour obligatoire de l\'offset au démarrage...');
+            const newOffset = simulateServerSync();
+            
+            if (newOffset !== null) {
+                // Mode en ligne
+                simulatedOffset = newOffset;
+                localStorage.setItem('time_manager_offset', newOffset.toString());
+                localStorage.setItem('time_manager_last_sync', Date.now().toString());
+                
+                log(`✅ CONNEXION RÉUSSIE: Offset mis à jour: ${newOffset}ms`);
+                log(`💾 Offset sauvegardé en mémoire du téléphone`);
+                log(`🌐 Mode en ligne: utilisation offset normal ${newOffset}ms`);
+                
+                addResult('success', `Démarrage #${updateCounter}`, 
+                         `✅ Offset mis à jour et sauvé: ${newOffset}ms (mode en ligne)`);
+            } else {
+                // Mode hors ligne
+                if (savedOffset) {
+                    const originalOffset = parseInt(savedOffset);
+                    let correctedOffset = originalOffset;
+                    
+                    // Appliquer logique spécifique si hors connexion
+                    if (originalOffset === -126) {
+                        correctedOffset = 126;
+                        log('🎯 MODE HORS CONNEXION: Cas spécial UTC -126ms → Ajout de 126ms au temps local');
+                    } else if (originalOffset === 320) {
+                        correctedOffset = -320;
+                        log('🎯 MODE HORS CONNEXION: Cas spécial UTC +320ms → Retrait de 320ms du temps local');
+                    } else {
+                        log(`📊 MODE HORS CONNEXION: Offset normal appliqué: ${originalOffset}ms`);
+                    }
+                    
+                    simulatedOffset = correctedOffset;
+                    log(`📱 HORS CONNEXION: Utilisation offset ${correctedOffset}ms`);
+                    
+                    addResult('info', `Démarrage #${updateCounter}`, 
+                             `📱 Mode hors connexion: offset ${correctedOffset}ms (sauvé: ${originalOffset}ms)`);
+                } else {
+                    log('📱 HORS CONNEXION: Aucun offset disponible, heure locale utilisée');
+                    addResult('info', `Démarrage #${updateCounter}`, 
+                             '📱 Mode hors connexion: aucun offset disponible');
+                }
+            }
+
+            log('✅ Service de temps initialisé avec offset mis à jour');
+            updateStatus();
+        }
+
+        function simulatePageRefresh() {
+            updateCounter++;
+            log(`\n🔄 === SIMULATION REFRESH PAGE #${updateCounter} ===`);
+            log('📱 Réinitialisation de la page détectée - mise à jour obligatoire de l\'offset');
+            
+            // Arrêt des services existants
+            log('🛑 Arrêt des timers de synchronisation existants...');
+            log('🔄 Réinitialisation complète du TimeService...');
+            
+            // Réinitialisation complète (comme un démarrage)
+            simulateAppStartup();
+            
+            addResult('info', `Refresh #${updateCounter}`, 
+                     '🔄 Page rafraîchie avec réinitialisation complète du TimeService');
+        }
+
+        function simulatePeriodicSync() {
+            updateCounter++;
+            log(`\n⏰ === SYNCHRONISATION PÉRIODIQUE #${updateCounter} ===`);
+            log('🔄 Synchronisation périodique en cours - mise à jour offset...');
+            
+            const newOffset = simulateServerSync();
+            
+            if (newOffset !== null) {
+                // Mode en ligne
+                const oldOffset = simulatedOffset;
+                simulatedOffset = newOffset;
+                
+                localStorage.setItem('time_manager_offset', newOffset.toString());
+                localStorage.setItem('time_manager_last_sync', Date.now().toString());
+                
+                if (oldOffset !== null) {
+                    const drift = newOffset - oldOffset;
+                    log(`🔄 Offset mis à jour: ${oldOffset}ms → ${newOffset}ms (dérive: ${drift}ms)`);
+                } else {
+                    log(`✅ Premier offset établi: ${newOffset}ms`);
+                }
+                
+                log(`💾 Offset mis à jour et sauvé en mémoire: ${newOffset}ms`);
+                
+                addResult('success', `Sync Périodique #${updateCounter}`, 
+                         `✅ Offset mis à jour: ${newOffset}ms (sauvé en mémoire)`);
+            } else {
+                log('📱 Synchronisation périodique échouée - conservation offset existant');
+                addResult('info', `Sync Périodique #${updateCounter}`, 
+                         '📱 Synchronisation échouée - offset conservé');
+            }
+            
+            updateStatus();
+        }
+
+        function checkLocalStorage() {
+            log('\n🔍 === VÉRIFICATION LOCALSTORAGE ===');
+            
+            const table = document.getElementById('storage-table');
+            const tbody = document.getElementById('storage-tbody');
+            tbody.innerHTML = '';
+            
+            const keys = ['time_manager_offset', 'time_manager_last_sync'];
+            let hasData = false;
+            
+            keys.forEach(key => {
+                const value = localStorage.getItem(key);
+                if (value) {
+                    hasData = true;
+                    const row = tbody.insertRow();
+                    row.insertCell(0).textContent = key;
+                    
+                    if (key === 'time_manager_last_sync') {
+                        const date = new Date(parseInt(value));
+                        row.insertCell(1).textContent = `${value} (${date.toLocaleString()})`;
+                    } else {
+                        row.insertCell(1).textContent = value;
+                    }
+                    
+                    row.insertCell(2).textContent = key === 'time_manager_offset' ? 'Offset en millisecondes' : 'Timestamp dernière sync';
+                    
+                    log(`📱 ${key}: ${value}`);
+                }
+            });
+            
+            if (hasData) {
+                table.style.display = 'table';
+                addResult('info', 'Vérification LocalStorage', 'Données trouvées - voir tableau');
+            } else {
+                table.style.display = 'none';
+                log('📱 Aucune donnée trouvée dans localStorage');
+                addResult('info', 'Vérification LocalStorage', 'Aucune donnée trouvée');
+            }
+            
+            updateStatus();
+        }
+
+        function clearLocalStorage() {
+            localStorage.removeItem('time_manager_offset');
+            localStorage.removeItem('time_manager_last_sync');
+            log('🗑️ LocalStorage effacé');
+            addResult('info', 'LocalStorage', 'Données effacées');
+            updateStatus();
+            
+            const table = document.getElementById('storage-table');
+            table.style.display = 'none';
+        }
+
+        function setTestOffset() {
+            const testOffset = -126; // Utiliser un cas spécial pour les tests
+            localStorage.setItem('time_manager_offset', testOffset.toString());
+            localStorage.setItem('time_manager_last_sync', Date.now().toString());
+            log(`🧪 Offset de test défini: ${testOffset}ms`);
+            addResult('info', 'Offset Test', `Offset défini: ${testOffset}ms`);
+            updateStatus();
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            log('🗑️ Historique des résultats effacé');
+        }
+
+        // Contrôles de connexion
+        function toggleConnection() {
+            simulatedConnectionStatus = !simulatedConnectionStatus;
+            log(`🔄 Mode de connexion changé: ${simulatedConnectionStatus ? 'EN LIGNE' : 'HORS LIGNE'}`);
+            updateStatus();
+        }
+
+        // Initialisation
+        window.onload = function() {
+            log('🚀 Page de test chargée');
+            log('📋 Tests disponibles pour vérifier la mise à jour d\'offset');
+            updateStatus();
+            
+            // Ajouter bouton de contrôle de connexion
+            const container = document.querySelector('.container');
+            const connectionControl = document.createElement('div');
+            connectionControl.innerHTML = `
+                <h3>🌐 Contrôle de Connexion</h3>
+                <button class="button" onclick="toggleConnection()">🔄 Basculer Mode Connexion</button>
+                <p><em>Mode actuel: <span id="mode-indicator">En ligne</span></em></p>
+            `;
+            container.appendChild(connectionControl);
+            
+            addResult('info', 'Initialisation', 'Page de test prête. Testez les différents scénarios de mise à jour d\'offset.');
+        };
+    </script>
+</body>
+</html>

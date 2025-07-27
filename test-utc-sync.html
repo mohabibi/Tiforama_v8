@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Synchronisation UTC - Tiforama</title>
+    <style>
+        body {
+            background: black;
+            color: white;
+            font-family: monospace;
+            padding: 20px;
+        }
+        .time-display {
+            font-size: 2em;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .status {
+            text-align: center;
+            margin: 10px 0;
+        }
+        .green { color: #00FF00; }
+        .red { color: #FF0000; }
+        .orange { color: #FFA500; }
+        .white { color: white; }
+        .test-section {
+            border: 1px solid #333;
+            margin: 20px 0;
+            padding: 15px;
+        }
+        button {
+            background: #555;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>🕐 Test Synchronisation UTC - Tiforama</h1>
+    
+    <div class="test-section">
+        <h2>Affichage Temps Synchronisé</h2>
+        <div class="time-display" id="utc-time">Chargement...</div>
+        <div class="status" id="offset-status">Initialisation...</div>
+        <div class="status" id="sync-status">En attente...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>Contrôles de Test</h2>
+        <button onclick="forceSync()">🔄 Forcer Synchronisation</button>
+        <button onclick="simulateOffline()">📡 Simuler Hors Ligne</button>
+        <button onclick="simulateOnline()">🌐 Revenir En Ligne</button>
+        <button onclick="resetOffset()">⚡ Reset Offset</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Informations Détaillées</h2>
+        <div id="details">
+            <p><strong>Heure locale :</strong> <span id="local-time">-</span></p>
+            <p><strong>Heure UTC serveur :</strong> <span id="server-time">-</span></p>
+            <p><strong>Offset calculé :</strong> <span id="calculated-offset">-</span></p>
+            <p><strong>Offset sauvé :</strong> <span id="saved-offset">-</span></p>
+            <p><strong>État connexion :</strong> <span id="connection-status">-</span></p>
+        </div>
+    </div>
+
+    <script>
+        // Simulation du TimeService pour test
+        class TestTimeService {
+            constructor() {
+                this.timeOffset = null;
+                this.isOffline = false;
+                this.isSyncing = false;
+                this.init();
+            }
+
+            async init() {
+                // Charger offset sauvé
+                const saved = localStorage.getItem('time_manager_offset');
+                if (saved) {
+                    this.timeOffset = parseInt(saved);
+                }
+                await this.syncWithServer();
+                this.startTimer();
+            }
+
+            async syncWithServer() {
+                if (this.isOffline) {
+                    console.log('Mode hors ligne - utilisation offset sauvé');
+                    return;
+                }
+
+                this.isSyncing = true;
+                this.updateDisplay();
+
+                try {
+                    const startTime = Date.now();
+                    const response = await fetch('https://worldtimeapi.org/api/timezone/Etc/UTC');
+                    const endTime = Date.now();
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        const serverTime = new Date(data.utc_datetime).getTime();
+                        const roundTrip = endTime - startTime;
+                        this.timeOffset = serverTime - (startTime + Math.floor(roundTrip / 2));
+                        
+                        // Sauvegarder
+                        localStorage.setItem('time_manager_offset', this.timeOffset.toString());
+                        localStorage.setItem('time_manager_last_sync', Date.now().toString());
+                        
+                        console.log(`Sync réussie, offset: ${this.timeOffset}ms`);
+                    }
+                } catch (error) {
+                    console.error('Erreur sync:', error);
+                } finally {
+                    this.isSyncing = false;
+                }
+            }
+
+            getNowSynchronized() {
+                if (this.timeOffset === null) return new Date();
+                return new Date(Date.now() + this.timeOffset);
+            }
+
+            startTimer() {
+                setInterval(() => {
+                    this.updateDisplay();
+                }, 100); // 10fps pour millisecondes fluides
+            }
+
+            updateDisplay() {
+                const now = this.getNowSynchronized();
+                const timeString = now.toISOString().substr(11, 8);
+                const ms = now.getMilliseconds().toString().padStart(3, '0');
+                const fullTime = `${timeString}:${ms}`;
+
+                document.getElementById('utc-time').textContent = `UTC: ${fullTime}`;
+                
+                // Status offset selon vos spécifications
+                let offsetText = '';
+                let offsetClass = 'white';
+                
+                if (this.isSyncing) {
+                    offsetText = 'Synchronisation...';
+                    offsetClass = 'orange';
+                } else if (this.isOffline) {
+                    offsetText = this.timeOffset ? `Offset hors ligne: ${this.timeOffset > 0 ? '+' : ''}${this.timeOffset}ms` : 'Hors connexion';
+                    offsetClass = 'orange';
+                } else if (this.timeOffset === null) {
+                    offsetText = 'Non synchronisé';
+                    offsetClass = 'white';
+                } else if (this.timeOffset === 0) {
+                    offsetText = '0';
+                    offsetClass = 'white';
+                } else if (this.timeOffset > 0) {
+                    offsetText = `+${this.timeOffset}ms`;
+                    offsetClass = 'green'; // UTC inférieur
+                } else {
+                    offsetText = `${this.timeOffset}ms`;
+                    offsetClass = 'red'; // UTC supérieur
+                }
+
+                const offsetElement = document.getElementById('offset-status');
+                offsetElement.textContent = offsetText;
+                offsetElement.className = `status ${offsetClass}`;
+
+                // Détails
+                document.getElementById('local-time').textContent = new Date().toISOString().substr(11, 12);
+                document.getElementById('calculated-offset').textContent = this.timeOffset ? `${this.timeOffset}ms` : 'Aucun';
+                document.getElementById('saved-offset').textContent = localStorage.getItem('time_manager_offset') || 'Aucun';
+                document.getElementById('connection-status').textContent = this.isOffline ? '🔴 Hors ligne' : '🟢 En ligne';
+            }
+        }
+
+        // Instance globale
+        let timeService;
+
+        // Fonctions de contrôle
+        async function forceSync() {
+            console.log('🔄 Synchronisation forcée...');
+            await timeService.syncWithServer();
+        }
+
+        function simulateOffline() {
+            console.log('📡 Simulation mode hors ligne...');
+            timeService.isOffline = true;
+        }
+
+        function simulateOnline() {
+            console.log('🌐 Retour en ligne...');
+            timeService.isOffline = false;
+            forceSync();
+        }
+
+        function resetOffset() {
+            console.log('⚡ Reset de l\'offset...');
+            timeService.timeOffset = null;
+            localStorage.removeItem('time_manager_offset');
+            localStorage.removeItem('time_manager_last_sync');
+        }
+
+        // Initialisation
+        window.addEventListener('load', () => {
+            timeService = new TestTimeService();
+        });
+    </script>
+</body>
+</html>

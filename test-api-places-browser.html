@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API FragTifo - Récupération Places</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #1a1a1a; color: white; padding: 20px; }
+        .test-result { background: #2a2a2a; padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .success { border-left: 4px solid #4caf50; }
+        .error { border-left: 4px solid #f44336; }
+        .warning { border-left: 4px solid #ff9800; }
+        button { background: #2196f3; color: white; border: none; padding: 10px 20px; margin: 5px; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #1976d2; }
+        pre { background: #333; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test API FragTifo - Récupération du Nombre de Places</h1>
+    
+    <div id="server-status" class="test-result warning">
+        <strong>📡 État du serveur:</strong> <span id="status-text">En cours de vérification...</span>
+    </div>
+    
+    <button onclick="testServerConnection()">🔍 Tester la connexion serveur</button>
+    <button onclick="testGroups()">👥 Tester les groupes</button>
+    <button onclick="testTifos()">🎭 Tester les tifos</button>
+    <button onclick="testTifoInfo()">📊 Tester les informations tifo</button>
+    <button onclick="runAllTests()">🚀 Tous les tests</button>
+    
+    <div id="results"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:3030';
+        
+        function addResult(title, content, type = 'success') {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.innerHTML = `
+                <strong>${title}</strong>
+                <pre>${content}</pre>
+            `;
+            resultsDiv.appendChild(resultDiv);
+        }
+        
+        async function testAPI(endpoint, description) {
+            try {
+                console.log(`🧪 Test: ${description}`);
+                const response = await fetch(`${API_BASE}${endpoint}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                addResult(
+                    `✅ ${description}`,
+                    `Status: ${response.status}\nData: ${JSON.stringify(data, null, 2)}`,
+                    'success'
+                );
+                return data;
+            } catch (error) {
+                addResult(
+                    `❌ ${description}`,
+                    `Erreur: ${error.message}`,
+                    'error'
+                );
+                return null;
+            }
+        }
+        
+        async function testServerConnection() {
+            document.getElementById('status-text').textContent = 'Test en cours...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/groups`);
+                if (response.ok) {
+                    document.getElementById('status-text').textContent = '✅ Serveur accessible';
+                    document.getElementById('server-status').className = 'test-result success';
+                } else {
+                    document.getElementById('status-text').textContent = `❌ Erreur ${response.status}`;
+                    document.getElementById('server-status').className = 'test-result error';
+                }
+            } catch (error) {
+                document.getElementById('status-text').textContent = '❌ Serveur non accessible';
+                document.getElementById('server-status').className = 'test-result error';
+            }
+        }
+        
+        async function testGroups() {
+            await testAPI('/groups', 'Récupération des groupes');
+        }
+        
+        async function testTifos() {
+            await testAPI('/tifos/1', 'Récupération des tifos du groupe 1');
+        }
+        
+        async function testTifoInfo() {
+            // Test avec place=0 (nouvelle numérotation)
+            await testAPI('/data?groupe=Supporters%20Nord&tifo=Tifo%20Victoire&place=0', 
+                          'Récupération infos tifo "Tifo Victoire" (place 0)');
+            
+            // Test avec place=1 pour comparaison
+            await testAPI('/data?groupe=Supporters%20Nord&tifo=Tifo%20Victoire&place=1', 
+                          'Récupération infos tifo "Tifo Victoire" (place 1)');
+        }
+        
+        async function runAllTests() {
+            document.getElementById('results').innerHTML = '';
+            await testServerConnection();
+            await testGroups();
+            await testTifos();
+            await testTifoInfo();
+        }
+        
+        // Test automatique au chargement
+        window.onload = () => {
+            testServerConnection();
+        };
+    </script>
+</body>
+</html>

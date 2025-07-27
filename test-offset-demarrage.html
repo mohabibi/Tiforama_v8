@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Offset Démarrage - Tiforama</title>
+    <style>
+        body { background: #000; color: #fff; font-family: monospace; padding: 20px; }
+        .test-case { border: 1px solid #333; margin: 15px 0; padding: 15px; }
+        .pass { color: #0f0; }
+        .fail { color: #f00; }
+        .info { color: #0af; }
+        .warn { color: #fa0; }
+        button { background: #333; color: #fff; border: none; padding: 8px 16px; margin: 5px; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #555; }
+        .time-display { font-size: 1.5em; text-align: center; margin: 20px 0; }
+        pre { background: #111; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Offset au Démarrage - Tiforama</h1>
+    
+    <div class="time-display">
+        <div>UTC Corrigé: <span id="corrected-time">--:--:--:---</span></div>
+        <div>Status: <span id="status">Initialisation...</span></div>
+    </div>
+
+    <div class="test-case">
+        <h3>🎛️ Contrôles de Test</h3>
+        <button onclick="testScenario1()">Test 1: Premier Démarrage</button>
+        <button onclick="testScenario2()">Test 2: Avec Offset Sauvé</button>
+        <button onclick="testScenario3()">Test 3: Hors Connexion + Offset</button>
+        <button onclick="testScenario4()">Test 4: Hors Connexion Sans Offset</button>
+        <button onclick="resetAll()">🔄 Reset Complet</button>
+    </div>
+
+    <div class="test-case">
+        <h3>📊 État Actuel</h3>
+        <div id="current-state">
+            <p><strong>Offset sauvé:</strong> <span id="saved-offset">-</span></p>
+            <p><strong>Dernière sync:</strong> <span id="last-sync">-</span></p>
+            <p><strong>Heure locale:</strong> <span id="local-time">-</span></p>
+            <p><strong>Offset appliqué:</strong> <span id="applied-offset">-</span></p>
+            <p><strong>Mode connexion:</strong> <span id="connection-mode">-</span></p>
+        </div>
+    </div>
+
+    <div class="test-case">
+        <h3>📝 Log des Opérations</h3>
+        <pre id="log-output"></pre>
+        <button onclick="clearLog()">Effacer Log</button>
+    </div>
+
+    <script>
+        class OffsetTester {
+            constructor() {
+                this.offset = null;
+                this.isOffline = false;
+                this.log = [];
+                this.init();
+            }
+
+            logMessage(type, message) {
+                const timestamp = new Date().toISOString().substr(11, 12);
+                const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+                this.log.push(logEntry);
+                console.log(logEntry);
+                this.updateLogDisplay();
+            }
+
+            updateLogDisplay() {
+                document.getElementById('log-output').textContent = this.log.slice(-10).join('\n');
+            }
+
+            init() {
+                this.loadSavedOffset();
+                this.startClock();
+                this.updateDisplay();
+            }
+
+            loadSavedOffset() {
+                const saved = localStorage.getItem('time_manager_offset');
+                const lastSync = localStorage.getItem('time_manager_last_sync');
+                
+                if (saved && lastSync) {
+                    this.offset = parseInt(saved);
+                    const age = Date.now() - parseInt(lastSync);
+                    this.logMessage('info', `Offset chargé: ${this.offset}ms (âge: ${Math.floor(age/60000)}min)`);
+                } else {
+                    this.logMessage('warn', 'Aucun offset sauvé trouvé');
+                }
+            }
+
+            async simulateSync() {
+                if (this.isOffline) {
+                    this.logMessage('error', 'Mode hors connexion - sync impossible');
+                    return false;
+                }
+
+                this.logMessage('info', 'Tentative de synchronisation...');
+                
+                try {
+                    // Simuler un délai réseau
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    // Simuler une réponse serveur (offset aléatoire entre -200 et +200ms)
+                    const newOffset = Math.floor(Math.random() * 400) - 200;
+                    const oldOffset = this.offset;
+                    this.offset = newOffset;
+                    
+                    // Sauvegarder
+                    localStorage.setItem('time_manager_offset', newOffset.toString());
+                    localStorage.setItem('time_manager_last_sync', Date.now().toString());
+                    
+                    if (oldOffset !== null) {
+                        this.logMessage('pass', `Offset mis à jour: ${oldOffset}ms → ${newOffset}ms`);
+                    } else {
+                        this.logMessage('pass', `Premier offset établi: ${newOffset}ms`);
+                    }
+                    
+                    return true;
+                } catch (error) {
+                    this.logMessage('error', `Erreur sync: ${error.message}`);
+                    return false;
+                }
+            }
+
+            getCorrectedTime() {
+                const now = new Date();
+                if (this.offset !== null) {
+                    return new Date(now.getTime() + this.offset);
+                }
+                return now;
+            }
+
+            startClock() {
+                setInterval(() => {
+                    this.updateDisplay();
+                }, 100);
+            }
+
+            updateDisplay() {
+                const corrected = this.getCorrectedTime();
+                const timeStr = corrected.toISOString().substr(11, 12);
+                document.getElementById('corrected-time').textContent = timeStr;
+
+                // Status
+                let status = 'Inconnu';
+                let statusColor = '#fff';
+                
+                if (this.isOffline) {
+                    if (this.offset !== null) {
+                        status = `Offset hors ligne: ${this.offset > 0 ? '+' : ''}${this.offset}ms`;
+                        statusColor = '#fa0';
+                    } else {
+                        status = 'Hors connexion';
+                        statusColor = '#f00';
+                    }
+                } else {
+                    if (this.offset === null) {
+                        status = 'Non synchronisé';
+                        statusColor = '#fff';
+                    } else if (this.offset === 0) {
+                        status = '0';
+                        statusColor = '#fff';
+                    } else if (this.offset > 0) {
+                        status = `+${this.offset}ms`;
+                        statusColor = '#0f0';
+                    } else {
+                        status = `${this.offset}ms`;
+                        statusColor = '#f00';
+                    }
+                }
+
+                const statusElement = document.getElementById('status');
+                statusElement.textContent = status;
+                statusElement.style.color = statusColor;
+
+                // État détaillé
+                document.getElementById('saved-offset').textContent = 
+                    localStorage.getItem('time_manager_offset') || 'Aucun';
+                
+                const lastSyncTime = localStorage.getItem('time_manager_last_sync');
+                document.getElementById('last-sync').textContent = 
+                    lastSyncTime ? new Date(parseInt(lastSyncTime)).toLocaleString() : 'Jamais';
+                
+                document.getElementById('local-time').textContent = 
+                    new Date().toISOString().substr(11, 12);
+                
+                document.getElementById('applied-offset').textContent = 
+                    this.offset !== null ? `${this.offset > 0 ? '+' : ''}${this.offset}ms` : 'Aucun';
+                
+                document.getElementById('connection-mode').textContent = 
+                    this.isOffline ? '🔴 Hors ligne' : '🟢 En ligne';
+            }
+
+            clearLog() {
+                this.log = [];
+                this.updateLogDisplay();
+            }
+        }
+
+        let tester;
+
+        // Scénarios de test
+        async function testScenario1() {
+            tester.logMessage('info', '=== TEST 1: Premier Démarrage ===');
+            localStorage.removeItem('time_manager_offset');
+            localStorage.removeItem('time_manager_last_sync');
+            tester.offset = null;
+            tester.isOffline = false;
+            tester.logMessage('info', 'LocalStorage nettoyé');
+            await tester.simulateSync();
+        }
+
+        async function testScenario2() {
+            tester.logMessage('info', '=== TEST 2: Avec Offset Sauvé ===');
+            localStorage.setItem('time_manager_offset', '150');
+            localStorage.setItem('time_manager_last_sync', Date.now().toString());
+            tester.offset = 150;
+            tester.isOffline = false;
+            tester.logMessage('info', 'Offset simulé: +150ms');
+            await tester.simulateSync();
+        }
+
+        async function testScenario3() {
+            tester.logMessage('info', '=== TEST 3: Hors Connexion + Offset ===');
+            localStorage.setItem('time_manager_offset', '100');
+            localStorage.setItem('time_manager_last_sync', Date.now().toString());
+            tester.offset = 100;
+            tester.isOffline = true;
+            tester.logMessage('info', 'Mode hors connexion activé avec offset +100ms');
+            await tester.simulateSync();
+        }
+
+        async function testScenario4() {
+            tester.logMessage('info', '=== TEST 4: Hors Connexion Sans Offset ===');
+            localStorage.removeItem('time_manager_offset');
+            localStorage.removeItem('time_manager_last_sync');
+            tester.offset = null;
+            tester.isOffline = true;
+            tester.logMessage('info', 'Mode hors connexion sans offset sauvé');
+            await tester.simulateSync();
+        }
+
+        function resetAll() {
+            tester.logMessage('info', '=== RESET COMPLET ===');
+            localStorage.removeItem('time_manager_offset');
+            localStorage.removeItem('time_manager_last_sync');
+            tester.offset = null;
+            tester.isOffline = false;
+            tester.logMessage('info', 'Application réinitialisée');
+        }
+
+        // Initialisation
+        window.addEventListener('load', () => {
+            tester = new OffsetTester();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Extraction Secondes + Millisecondes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-case {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f9f9f9;
+        }
+        .seconds-only {
+            border-left: 4px solid #4CAF50;
+        }
+        .with-minutes {
+            border-left: 4px solid #FF9800;
+        }
+        .with-hours {
+            border-left: 4px solid #f44336;
+        }
+        .button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .button:hover {
+            background: #45a049;
+        }
+        .log {
+            background: #1e1e1e;
+            color: #fff;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-top: 10px;
+        }
+        .result {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .result.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background: #f2f2f2;
+        }
+        .explanation {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🕒 Test Extraction Secondes + Millisecondes</h1>
+        <p>Ce test vérifie que seules les <strong>secondes et millisecondes</strong> sont conservées dans l'offset, et que les <strong>minutes et heures sont ignorées</strong>.</p>
+        
+        <div class="explanation">
+            <strong>Logique d'extraction :</strong><br>
+            • <strong>Offset brut :</strong> Peut contenir heures, minutes, secondes, millisecondes<br>
+            • <strong>Offset extrait :</strong> Garde seulement les secondes (0-59s) et millisecondes (0-999ms)<br>
+            • <strong>Plage résultat :</strong> -59999ms à +59999ms (±59.999 secondes maximum)<br>
+            • <strong>Formule :</strong> <code>offsetSecondsMs = offsetBrut % 60000</code>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🧪 Tests d'Extraction</h2>
+        
+        <div class="test-case seconds-only">
+            <h3>1. Offsets avec Secondes et Millisecondes uniquement</h3>
+            <p>Ces offsets sont dans la plage ±59999ms, donc conservés intégralement</p>
+            <button class="button" onclick="testExtraction(1250)">Test +1.25s (1250ms)</button>
+            <button class="button" onclick="testExtraction(-3450)">Test -3.45s (-3450ms)</button>
+            <button class="button" onclick="testExtraction(59999)">Test +59.999s (59999ms)</button>
+            <button class="button" onclick="testExtraction(-126)">Test -126ms (cas spécial)</button>
+            <button class="button" onclick="testExtraction(320)">Test +320ms (cas spécial)</button>
+        </div>
+
+        <div class="test-case with-minutes">
+            <h3>2. Offsets avec Minutes (à réduire)</h3>
+            <p>Ces offsets contiennent des minutes qui doivent être ignorées</p>
+            <button class="button" onclick="testExtraction(75000)">Test +75s (1min 15s → 15s)</button>
+            <button class="button" onclick="testExtraction(-120000)">Test -120s (2min → 0s)</button>
+            <button class="button" onclick="testExtraction(185432)">Test +185.432s (3min 5.432s → 5.432s)</button>
+            <button class="button" onclick="testExtraction(-90126)">Test -90.126s (1min 30.126s → -30.126s)</button>
+        </div>
+
+        <div class="test-case with-hours">
+            <h3>3. Offsets avec Heures (à réduire drastiquement)</h3>
+            <p>Ces offsets contiennent des heures qui doivent être complètement ignorées</p>
+            <button class="button" onclick="testExtraction(3600000)">Test +1h (→ 0s)</button>
+            <button class="button" onclick="testExtraction(-7200000)">Test -2h (→ 0s)</button>
+            <button class="button" onclick="testExtraction(3665432)">Test +1h 1min 5.432s (→ 5.432s)</button>
+            <button class="button" onclick="testExtraction(-3720126)">Test -1h 2min 0.126s (→ -0.126s)</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📊 Tableau de Vérification</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Offset Brut</th>
+                    <th>Décomposition</th>
+                    <th>Secondes + Ms Extraites</th>
+                    <th>Explication</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1250ms</td>
+                    <td>0h 0min 1.25s</td>
+                    <td>1250ms</td>
+                    <td>Pas de minutes/heures → conservé tel quel</td>
+                </tr>
+                <tr style="background: #fff3cd;">
+                    <td>75000ms</td>
+                    <td>0h 1min 15s</td>
+                    <td>15000ms</td>
+                    <td>1 minute ignorée → garde 15s</td>
+                </tr>
+                <tr style="background: #ffebee;">
+                    <td>3665432ms</td>
+                    <td>1h 1min 5.432s</td>
+                    <td>5432ms</td>
+                    <td>1h + 1min ignorés → garde 5.432s</td>
+                </tr>
+                <tr>
+                    <td>-126ms</td>
+                    <td>0h 0min -0.126s</td>
+                    <td>-126ms</td>
+                    <td>Cas spécial conservé → correction +126ms</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="container">
+        <h2>📋 Résultats des Tests</h2>
+        <div id="results"></div>
+        <button class="button" onclick="clearResults()" style="background: #f44336;">Effacer Résultats</button>
+    </div>
+
+    <div class="container">
+        <h2>📝 Log Détaillé</h2>
+        <div id="log" class="log">Prêt pour les tests d'extraction s+ms...\n</div>
+    </div>
+
+    <script>
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toISOString().substr(11, 12);
+            logElement.textContent += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function addResult(type, title, message) {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}`;
+            resultDiv.innerHTML = `<strong>${title}:</strong> ${message}`;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            log('Résultats effacés');
+        }
+
+        // Simulation de la méthode extractSecondsAndMilliseconds
+        function extractSecondsAndMilliseconds(rawOffset) {
+            // Convertir l'offset en valeur absolue pour les calculs
+            const absOffset = Math.abs(rawOffset);
+            const sign = rawOffset >= 0 ? 1 : -1;
+            
+            // Extraire seulement les millisecondes des secondes (0-59999ms)
+            // 1 minute = 60000ms, donc on prend le modulo 60000
+            const secondsAndMs = absOffset % 60000;
+            
+            // Appliquer le signe original
+            const result = secondsAndMs * sign;
+            
+            const ignoredMinutes = Math.floor(absOffset / 60000);
+            log(`🕒 Extraction s+ms: ${rawOffset}ms → ${result}ms (ignoré: ${ignoredMinutes} minutes)`);
+            
+            return result;
+        }
+
+        // Logique spécifique pour les cas -126ms et +320ms
+        function applySpecificOffsetLogicOffline(originalOffset) {
+            if (originalOffset === -126) {
+                log(`🎯 MODE HORS CONNEXION: Cas spécial UTC -126ms → Ajout de 126ms au temps local`);
+                return 126;
+            }
+            
+            if (originalOffset === 320) {
+                log(`🎯 MODE HORS CONNEXION: Cas spécial UTC +320ms → Retrait de 320ms du temps local`);
+                return -320;
+            }
+            
+            log(`📊 MODE HORS CONNEXION: Offset normal appliqué: ${originalOffset}ms`);
+            return originalOffset;
+        }
+
+        function formatTime(ms) {
+            const absMs = Math.abs(ms);
+            const hours = Math.floor(absMs / 3600000);
+            const minutes = Math.floor((absMs % 3600000) / 60000);
+            const seconds = Math.floor((absMs % 60000) / 1000);
+            const milliseconds = absMs % 1000;
+            
+            const sign = ms >= 0 ? '+' : '-';
+            
+            if (hours > 0) {
+                return `${sign}${hours}h ${minutes}min ${seconds}.${milliseconds.toString().padStart(3, '0')}s`;
+            } else if (minutes > 0) {
+                return `${sign}${minutes}min ${seconds}.${milliseconds.toString().padStart(3, '0')}s`;
+            } else {
+                return `${sign}${seconds}.${milliseconds.toString().padStart(3, '0')}s`;
+            }
+        }
+
+        function testExtraction(rawOffset) {
+            log(`\n🧪 === TEST EXTRACTION ${rawOffset}ms ===`);
+            
+            // Décomposer l'offset pour affichage
+            const decomposition = formatTime(rawOffset);
+            log(`📊 Offset brut: ${rawOffset}ms (${decomposition})`);
+            
+            // Extraire secondes + millisecondes
+            const extractedOffset = extractSecondsAndMilliseconds(rawOffset);
+            const extractedDecomposition = formatTime(extractedOffset);
+            log(`⚙️ Offset extrait (s+ms): ${extractedOffset}ms (${extractedDecomposition})`);
+            
+            // Test de la logique spécifique si en mode hors connexion
+            const finalOffset = applySpecificOffsetLogicOffline(extractedOffset);
+            
+            // Calculer ce qui a été ignoré
+            const ignoredMs = Math.abs(rawOffset) - Math.abs(extractedOffset);
+            const ignoredMinutes = Math.floor(ignoredMs / 60000);
+            const ignoredSeconds = Math.floor((ignoredMs % 60000) / 1000);
+            
+            if (ignoredMs > 0) {
+                log(`🗑️ Ignoré: ${ignoredMinutes} minutes ${ignoredSeconds} secondes`);
+            } else {
+                log(`✅ Rien ignoré (offset dans la plage ±59.999s)`);
+            }
+            
+            // Résultat final
+            log(`🎯 Offset final appliqué: ${finalOffset}ms`);
+            
+            // Validation du résultat
+            let testResult;
+            let resultType;
+            
+            if (Math.abs(extractedOffset) <= 59999) {
+                if (rawOffset === extractedOffset) {
+                    testResult = `✅ SUCCÈS: Offset conservé intégralement (${extractedOffset}ms)`;
+                    resultType = 'success';
+                } else {
+                    testResult = `✅ SUCCÈS: Minutes/heures supprimées ${rawOffset}ms → ${extractedOffset}ms`;
+                    resultType = 'success';
+                }
+            } else {
+                testResult = `❌ ERREUR: Extraction incorrecte (résultat > ±59999ms)`;
+                resultType = 'error';
+            }
+            
+            // Test cas spéciaux
+            if (extractedOffset === -126 && finalOffset === 126) {
+                testResult += ` + Cas spécial -126ms → +126ms`;
+            } else if (extractedOffset === 320 && finalOffset === -320) {
+                testResult += ` + Cas spécial +320ms → -320ms`;
+            }
+            
+            log(testResult);
+            addResult(resultType, `Test ${rawOffset}ms`, testResult);
+        }
+
+        // Tests automatiques au chargement
+        window.onload = function() {
+            log('🚀 Page de test chargée');
+            log('📋 Tests disponibles pour vérifier l\'extraction des secondes + millisecondes');
+            log('🕒 Plage de résultat: -59999ms à +59999ms (±59.999 secondes)');
+            addResult('info', 'Initialisation', 'Page de test prête. Testez les différents types d\'offset.');
+        };
+    </script>
+</body>
+</html>

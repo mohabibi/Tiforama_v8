@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test des Offsets Spécifiques -126ms et +320ms</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-case {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f9f9f9;
+        }
+        .test-case.scenario-1 {
+            border-left: 4px solid #ff5722;
+        }
+        .test-case.scenario-2 {
+            border-left: 4px solid #2196f3;
+        }
+        .button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .button:hover {
+            background: #45a049;
+        }
+        .button.danger {
+            background: #f44336;
+        }
+        .button.danger:hover {
+            background: #da190b;
+        }
+        .log {
+            background: #1e1e1e;
+            color: #fff;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin-top: 10px;
+        }
+        .result {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .result.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .explanation {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background: #f2f2f2;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Test des Offsets Spécifiques TimeService</h1>
+        <p>Ce test vérifie la logique spécifique pour les cas d'offset -126ms et +320ms selon vos spécifications.</p>
+        
+        <div class="explanation">
+            <strong>Logique Implémentée :</strong><br>
+            • <strong>Mode EN LIGNE</strong> → Utiliser l'offset normal du serveur (pas de correction spéciale)<br>
+            • <strong>Mode HORS CONNEXION + offset -126ms</strong> → Appliquer correction +126ms au temps local<br>
+            • <strong>Mode HORS CONNEXION + offset +320ms</strong> → Appliquer correction -320ms au temps local<br>
+            • <strong>Mode HORS CONNEXION + autres offsets</strong> → Appliquer l'offset normal
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🧪 Tests de Simulation</h2>
+        
+        <div class="test-case scenario-1">
+            <h3>Scénario 1: Mode HORS CONNEXION avec offset -126ms</h3>
+            <p><strong>Situation :</strong> Impossible de se connecter au serveur + offset sauvé -126ms</p>
+            <p><strong>Correction attendue :</strong> Ajouter 126ms au temps local → offset appliqué +126ms</p>
+            <button class="button" onclick="simulateOfflineMode(-126)">Simuler hors connexion avec -126ms</button>
+        </div>
+
+        <div class="test-case scenario-2">
+            <h3>Scénario 2: Mode HORS CONNEXION avec offset +320ms</h3>
+            <p><strong>Situation :</strong> Impossible de se connecter au serveur + offset sauvé +320ms</p>
+            <p><strong>Correction attendue :</strong> Retrancher 320ms du temps local → offset appliqué -320ms</p>
+            <button class="button" onclick="simulateOfflineMode(320)">Simuler hors connexion avec +320ms</button>
+        </div>
+
+        <div class="test-case">
+            <h3>Test Mode EN LIGNE: Offset quelconque</h3>
+            <p><strong>Situation :</strong> Connexion serveur réussie avec offset (ex: -126ms ou +320ms)</p>
+            <p><strong>Correction attendue :</strong> Utiliser l'offset normal (pas de correction spéciale)</p>
+            <button class="button" onclick="simulateOnlineMode(-126)">Simuler en ligne avec -126ms</button>
+            <button class="button" onclick="simulateOnlineMode(320)">Simuler en ligne avec +320ms</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📋 Résultats des Tests</h2>
+        <div id="results"></div>
+        <button class="button danger" onclick="clearResults()">Effacer les résultats</button>
+    </div>
+
+    <div class="container">
+        <h2>📊 Tableau de Vérification</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Offset Mesuré</th>
+                    <th>Signification</th>
+                    <th>Correction Appliquée</th>
+                    <th>Résultat Final</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="background: #e8f5e8;">
+                    <td>EN LIGNE</td>
+                    <td>Connexion serveur OK</td>
+                    <td>Offset normal (aucune correction)</td>
+                    <td>Synchronisation standard</td>
+                </tr>
+                <tr style="background: #ffebee;">
+                    <td>HORS CONNEXION + (-126ms)</td>
+                    <td>Pas de connexion + offset -126ms</td>
+                    <td>+126ms au temps local</td>
+                    <td>Compensation de l'avance locale</td>
+                </tr>
+                <tr style="background: #e3f2fd;">
+                    <td>HORS CONNEXION + (+320ms)</td>
+                    <td>Pas de connexion + offset +320ms</td>
+                    <td>-320ms du temps local</td>
+                    <td>Compensation du retard local</td>
+                </tr>
+                <tr>
+                    <td>HORS CONNEXION + autres</td>
+                    <td>Pas de connexion + offset normal</td>
+                    <td>Offset normal</td>
+                    <td>Utilisation offset sauvé</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="container">
+        <h2>🔧 Test avec LocalStorage</h2>
+        <p>Simuler le chargement d'offsets depuis localStorage :</p>
+        <button class="button" onclick="testLocalStorageOffset(-126)">Charger offset -126ms depuis localStorage</button>
+        <button class="button" onclick="testLocalStorageOffset(320)">Charger offset +320ms depuis localStorage</button>
+        <button class="button danger" onclick="clearLocalStorage()">Effacer localStorage</button>
+    </div>
+
+    <div class="container">
+        <h2>📝 Log des Opérations</h2>
+        <div id="log" class="log">Prêt pour les tests...\n</div>
+    </div>
+
+    <script>
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toISOString().substr(11, 12);
+            logElement.textContent += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function addResult(type, title, message) {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${type}`;
+            resultDiv.innerHTML = `<strong>${title}:</strong> ${message}`;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            log('Résultats effacés');
+        }
+
+        function clearLocalStorage() {
+            localStorage.removeItem('time_manager_offset');
+            localStorage.removeItem('time_manager_last_sync');
+            log('LocalStorage effacé');
+            addResult('info', 'LocalStorage', 'Données effacées');
+        }
+
+        // Simulation de la logique spécifique UNIQUEMENT en mode hors connexion
+        function applySpecificOffsetLogicOffline(originalOffset) {
+            if (originalOffset === -126) {
+                log(`🎯 MODE HORS CONNEXION: Cas spécial UTC -126ms → Ajout de 126ms au temps local`);
+                return 126;
+            }
+            
+            if (originalOffset === 320) {
+                log(`🎯 MODE HORS CONNEXION: Cas spécial UTC +320ms → Retrait de 320ms du temps local`);
+                return -320;
+            }
+            
+            log(`📊 MODE HORS CONNEXION: Offset normal appliqué: ${originalOffset}ms`);
+            return originalOffset;
+        }
+
+        function simulateOnlineMode(measuredOffset) {
+            log(`\n🌐 === MODE EN LIGNE - OFFSET ${measuredOffset}ms ===`);
+            log(`📡 Connexion serveur réussie`);
+            log(`📊 Offset mesuré depuis serveur: ${measuredOffset}ms`);
+            
+            // En ligne : utiliser l'offset normal (pas de correction spéciale)
+            const appliedOffset = measuredOffset;
+            
+            log(`⚙️ Offset appliqué: ${appliedOffset}ms (normal, pas de correction)`);
+            
+            const now = Date.now();
+            const localTime = new Date(now);
+            const correctedTime = new Date(now + appliedOffset);
+            
+            log(`⏰ Heure locale brute: ${localTime.toISOString()}`);
+            log(`🎯 Heure corrigée (locale + offset): ${correctedTime.toISOString()}`);
+            log(`🌐 Mode en ligne: utilisation offset normal ${appliedOffset}ms`);
+            
+            // Sauvegarder pour usage hors ligne futur
+            localStorage.setItem('time_manager_offset', measuredOffset.toString());
+            localStorage.setItem('time_manager_last_sync', Date.now().toString());
+            log(`💾 Offset ${measuredOffset}ms sauvegardé pour usage hors connexion futur`);
+            
+            addResult('success', `Mode EN LIGNE ${measuredOffset}ms`, 
+                     `✅ Offset normal appliqué: ${appliedOffset}ms (pas de correction spéciale)`);
+        }
+
+        function simulateOfflineMode(savedOffset) {
+            log(`\n📱 === MODE HORS CONNEXION - OFFSET ${savedOffset}ms ===`);
+            log(`❌ Impossible de se connecter au serveur`);
+            log(`📱 Chargement offset sauvé: ${savedOffset}ms`);
+            
+            const appliedOffset = applySpecificOffsetLogicOffline(savedOffset);
+            
+            log(`⚙️ Offset appliqué en hors connexion: ${appliedOffset}ms`);
+            
+            const now = Date.now();
+            const localTime = new Date(now);
+            const correctedTime = new Date(now + appliedOffset);
+            
+            log(`⏰ Heure locale brute: ${localTime.toISOString()}`);
+            log(`🎯 Heure corrigée (locale + offset): ${correctedTime.toISOString()}`);
+            
+            if (savedOffset !== appliedOffset) {
+                log(`� HORS CONNEXION: Offset corrigé ${savedOffset}ms → ${appliedOffset}ms`);
+            } else {
+                log(`📊 HORS CONNEXION: Offset normal utilisé ${appliedOffset}ms`);
+            }
+            
+            // Résultat du test
+            let testResult;
+            let resultType;
+            
+            if (savedOffset === -126 && appliedOffset === 126) {
+                testResult = '✅ SUCCÈS: Mode hors connexion avec -126ms → correction +126ms';
+                resultType = 'success';
+            } else if (savedOffset === 320 && appliedOffset === -320) {
+                testResult = '✅ SUCCÈS: Mode hors connexion avec +320ms → correction -320ms';
+                resultType = 'success';
+            } else if (savedOffset === appliedOffset && savedOffset !== -126 && savedOffset !== 320) {
+                testResult = '✅ SUCCÈS: Mode hors connexion avec offset normal';
+                resultType = 'success';
+            } else {
+                testResult = '❌ ERREUR: Logique hors connexion incorrecte';
+                resultType = 'error';
+            }
+            
+            log(testResult);
+            addResult(resultType, `Mode HORS CONNEXION ${savedOffset}ms`, testResult);
+        }
+
+        function simulateOffset(measuredOffset) {
+            // Fonction legacy - rediriger vers les nouveaux tests
+            log(`\n⚠️ === REDIRECTION VERS NOUVEAUX TESTS ===`);
+            log(`Cette fonction est obsolète. Utilisez les nouveaux tests:`);
+            log(`- Mode EN LIGNE: simulateOnlineMode(${measuredOffset})`);
+            log(`- Mode HORS CONNEXION: simulateOfflineMode(${measuredOffset})`);
+            
+            addResult('info', 'Test Legacy', 'Utilisez les nouveaux boutons de test EN LIGNE / HORS CONNEXION');
+        }
+
+        function testLocalStorageOffset(savedOffset) {
+            log(`\n📱 === TEST CHARGEMENT LOCALSTORAGE ${savedOffset}ms ===`);
+            
+            // Simuler des données dans localStorage
+            localStorage.setItem('time_manager_offset', savedOffset.toString());
+            localStorage.setItem('time_manager_last_sync', Date.now().toString());
+            
+            log(`📱 Simulation: offset ${savedOffset}ms trouvé dans localStorage`);
+            
+            const appliedOffset = applySpecificOffsetLogic(savedOffset);
+            
+            log(`⚙️ Offset appliqué au démarrage: ${appliedOffset}ms`);
+            
+            if (savedOffset !== appliedOffset) {
+                log(`🔄 Transformation: ${savedOffset}ms → ${appliedOffset}ms`);
+                addResult('info', `Chargement localStorage ${savedOffset}ms`, 
+                         `Offset transformé de ${savedOffset}ms en ${appliedOffset}ms`);
+            } else {
+                log(`📊 Aucune transformation nécessaire`);
+                addResult('info', `Chargement localStorage ${savedOffset}ms`, 
+                         `Offset appliqué directement: ${appliedOffset}ms`);
+            }
+        }
+
+        // Test automatique au chargement
+        window.onload = function() {
+            log('🚀 Page de test chargée');
+            log('📋 Tests disponibles pour les offsets spécifiques -126ms et +320ms');
+            addResult('info', 'Initialisation', 'Page de test prête. Utilisez les boutons pour tester la logique.');
+        };
+    </script>
+</body>
+</html>
